@@ -1,4 +1,5 @@
 CXX=g++
+MPICXX=mpicxx
 FLAGS=-O3 -Wall
 
 all: gen_testcase quicksort quicksort_std_thread quicksort_omp quicksort_mpi
