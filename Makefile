@@ -1,32 +1,38 @@
 CXX=g++
 MPICXX=mpicxx
-FLAGS=-O3 -Wall
+FLAGS=-O3 -Wall -Wextra -Werror -std=c++11
+
+HELPER_FOLDER=./helpers
+
+COMMONS_FOLDER=./commons
+COMMONS=$(COMMONS_FOLDER)/helper.cpp
 
 all: gen_testcase quicksort quicksort_std_thread quicksort_omp quicksort_mpi quicksort_mpi2
 
-gen_testcase: gen_testcase.cpp
-	$(CXX) $(FLAGS) $< -o $@
+gen_testcase:
+	cd $(HELPER_FOLDER) && make
 
 quicksort: quicksort.cpp
-	$(CXX) $(FLAGS) $< -o $@
+	$(CXX) $(FLAGS) $< -o $@ $(COMMONS)
 
 quicksort_std_thread: quicksort_std_thread.cpp
-	$(CXX) $(FLAGS) -pthread $< -o $@
+	$(CXX) $(FLAGS) -pthread $< -o $@ $(COMMONS)
 
 quicksort_omp: quicksort_omp.cpp
-	$(CXX) $(FLAGS) -fopenmp $< -o $@
+	$(CXX) $(FLAGS) -fopenmp $< -o $@ $(COMMONS)
 
 quicksort_mpi: quicksort_mpi.cc
-	$(MPICXX) $(FLAGS) $< -o $@
+	$(MPICXX) $(FLAGS) $< -o $@ $(COMMONS)
 
 quicksort_mpi_run:
 	mpirun -np 4 --hostfile hosts quicksort_mpi random_numbers_100000000.bin
 
 quicksort_mpi2: quicksort_mpi2.cc
-	$(MPICXX) $(FLAGS) $< -o $@
+	$(MPICXX) $(FLAGS) $< -o $@ $(COMMONS)
 
 quicksort_mpi2_run:
 	mpirun -np 4 --hostfile hosts quicksort_mpi2 random_numbers_100000000.bin
 
 clean:
-	rm -f gen_testcase quicksort quicksort_std_thread quicksort_omp quicksort_mpi
+	cd $(HELPER_FOLDER) && make clean
+	rm -f gen_testcase quicksort quicksort_std_thread quicksort_omp quicksort_mpi quicksort_mpi2

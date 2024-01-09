@@ -5,18 +5,10 @@
 #include <fstream>
 #include <omp.h>
 #include <cmath>
-
-typedef long long ll;
-
-#define SWAP(x, y) \
-    ll tmp = (x);  \
-    (x) = (y);     \
-    (y) = (tmp);
-using namespace std;
-using namespace chrono;
+#include "commons/helper.hpp"
 
 // Partition 函數
-ll partition(vector<ll> &arr, ll low, ll high)
+ll partition(std::vector<ll> &arr, ll low, ll high)
 {
     ll pivot = arr[high]; // 選擇最右邊的元素作為 pivot
 
@@ -38,7 +30,7 @@ ll partition(vector<ll> &arr, ll low, ll high)
 
 #define OMP 1
 
-void quickSort(vector<ll> &arr, ll low, ll high, int depth)
+void quickSort(std::vector<ll> &arr, ll low, ll high, int depth)
 {
     if (low < high)
     {
@@ -58,44 +50,11 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth)
     }
 }
 
-bool read_data(vector<ll> &arr, std::string filename)
-{
-    ifstream inFile(filename, ios::binary | ios::in);
-
-    if (!inFile.is_open())
-    {
-        return false;
-    }
-
-    ll value;
-    while (inFile.read(reinterpret_cast<char *>(&value), sizeof(ll)))
-    {
-        arr.push_back(value);
-    }
-
-    inFile.close();
-
-    return true;
-}
-
-// If correct, print nothing. Otherwise, print error index and its value
-void validate(vector<ll> &arr)
-{
-    ll n = arr.size();
-    for (ll i = 0; i < n - 1; i++)
-    {
-        if (arr[i] > arr[i + 1])
-        {
-            cout << "error at " << i << " " << arr[i] << " " << arr[i + 1] << endl;
-        }
-    }
-}
-
 int main(int argc, char **argv)
 {
     if (argc < 2 || argc > 3)
     {
-        cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
         return 1;
     }
 
@@ -110,16 +69,16 @@ int main(int argc, char **argv)
         omp_set_num_threads(threads);
     }
 
-    vector<ll> arr;
+    std::vector<ll> arr;
     if (!read_data(arr, filename))
     {
-        cerr << "Can't read data\n";
+        std::cerr << "Can't read data\n";
         return 1;
     }
     ll n = arr.size();
-    cout << "Load count: " << n << endl;
+    std::cout << "Load count: " << n << std::endl;
 
-    auto start_time = high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel
     {
@@ -127,9 +86,9 @@ int main(int argc, char **argv)
         quickSort(arr, 0, n - 1, depth);
     }
 
-    auto end_time = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end_time - start_time);
-    cout << "Execution time: " << duration.count() << " ms" << endl;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
 
     validate(arr);
 

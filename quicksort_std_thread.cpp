@@ -2,22 +2,14 @@
 #include <vector>
 #include <thread>
 #include <chrono>
-#include <fstream>
 #include <cmath>
-#define SWAP(x, y) \
-    ll tmp = (x);  \
-    (x) = (y);     \
-    (y) = (tmp);
-using namespace std;
-using namespace chrono;
-
-typedef long long ll;
+#include "commons/helper.hpp"
 
 int threadCount = 8;
 int totalDepth = 3; // log2(8) = 3
 
 // Partition 函數
-ll partition(vector<ll> &arr, ll low, ll high)
+ll partition(std::vector<ll> &arr, ll low, ll high)
 {
     ll pivot = arr[high]; // 選擇最右邊的元素作為 pivot
 
@@ -37,45 +29,7 @@ ll partition(vector<ll> &arr, ll low, ll high)
     return i + 1;                // 回傳 pivot 的位置
 }
 
-/*
-void quickSort(vector<ll>& arr, ll low, ll high, int depth) {
-    if (low < high) {
-        ll pi = partition(arr, low, high);  // 選擇 pivot 並找到 partition 的位置
-
-        if (depth > 0) {
-            if (pi - low <= 128) {
-                thread left_thread(quickSort, ref(arr), low, pi-1, 0);  // Left part
-                quickSort(arr, pi+1, high, depth); // Right part
-
-                left_thread.join();
-            } else if (high - pi <= 128) {
-                thread right_thread(quickSort, ref(arr), pi+1, high, 0);  // Right part
-                quickSort(arr, low, pi-1, depth);  // Left part
-
-                right_thread.join();
-            } else {
-                thread right_thread(quickSort, ref(arr), pi+1, high, depth-1);  // Right part
-                quickSort(arr, low, pi-1, depth-1); // Left part
-                right_thread.join();
-            }
-
-            // if (pi - low > high - pi) {  // 使用 std::thread 分別對 pivot 的左右兩邊進行排序
-            //     thread right_thread(quickSort, ref(arr), pi+1, high, depth-1);  // Right part
-            //     quickSort(arr, low, pi-1, depth-1); // Left part
-            //     right_thread.join();
-            // } else {
-            //     thread left_thread(quickSort, ref(arr), low, pi-1, depth-1);  // Left part
-            //     quickSort(arr, pi+1, high, depth-1);  // Right part
-            //     left_thread.join();
-            // }
-        } else {
-            quickSort(arr, low, pi - 1, 0);
-            quickSort(arr, pi + 1, high, 0);
-        }
-    }
-}*/
-
-void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int &id)
+void quickSort(std::vector<ll> &arr, ll low, ll high, int depth, const int &id)
 {
     if (low < high)
     {
@@ -86,7 +40,7 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int &id)
             int forkedId = (1 << (totalDepth - depth)) + id;
             if (forkedId < threadCount) // Create a new thread
             {
-                thread left_thread(quickSort, ref(arr), low, pi - 1, depth - 1, ref(forkedId));
+                std::thread left_thread(quickSort, ref(arr), low, pi - 1, depth - 1, std::ref(forkedId));
                 quickSort(arr, pi + 1, high, depth - 1, id); // Right part
                 left_thread.join();
             }
@@ -104,44 +58,11 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int &id)
     }
 }
 
-bool read_data(vector<ll> &arr, std::string filename)
-{
-    ifstream inFile(filename, ios::binary | ios::in);
-
-    if (!inFile.is_open())
-    {
-        return false;
-    }
-
-    ll value;
-    while (inFile.read(reinterpret_cast<char *>(&value), sizeof(ll)))
-    {
-        arr.push_back(value);
-    }
-
-    inFile.close();
-
-    return true;
-}
-
-// If correct, print nothing. Otherwise, print error index and its value
-void validate(vector<ll> &arr)
-{
-    ll n = arr.size();
-    for (ll i = 0; i < n - 1; i++)
-    {
-        if (arr[i] > arr[i + 1])
-        {
-            cout << "error at " << i << " " << arr[i] << " " << arr[i + 1] << endl;
-        }
-    }
-}
-
 int main(int argc, char **argv)
 {
     if (argc < 2 || argc > 3)
     {
-        cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
         return 1;
     }
 
@@ -153,25 +74,25 @@ int main(int argc, char **argv)
         threadCount = atoi(argv[2]);
     }
     totalDepth = (int)ceil(log2(threadCount));
-    cout << "Run for [" << threadCount << "] threads" << endl;
+    std::cout << "Run for [" << threadCount << "] threads" << std::endl;
 
-    vector<ll> arr;
+    std::vector<ll> arr;
     if (!read_data(arr, filename))
     {
-        cerr << "[!] Can't read data\n";
+        std::cerr << "[!] Can't read data\n";
         return 1;
     }
     ll n = arr.size();
-    cout << "[*] Load count: " << n << endl;
+    std::cout << "[*] Load count: " << n << std::endl;
 
-    auto start_time = high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     int rootId = 0;
     quickSort(arr, 0, n - 1, totalDepth, rootId);
 
-    auto end_time = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end_time - start_time);
-    cout << "[*] Execution time: " << duration.count() << " ms" << endl;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "[*] Execution time: " << duration.count() << " ms" << std::endl;
 
     validate(arr);
 

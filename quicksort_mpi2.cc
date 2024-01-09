@@ -1,16 +1,11 @@
+#define OMPI_SKIP_MPICXX 1 // To eliminate the warning of OpenMPI
 #include <mpi.h>
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <fstream>
 #include <chrono>
 #include <cmath>
-
-typedef long long ll;
-#define SWAP(x, y) \
-    ll tmp = (x);  \
-    (x) = (y);     \
-    (y) = (tmp);
+#include "commons/helper.hpp"
 
 int partition(std::vector<ll> &arr, ll low, ll high)
 {
@@ -62,39 +57,6 @@ void quickSort(std::vector<ll> &arr, ll low, ll high, int depth)
                 quickSort(arr, low, pi - 1, 0);
                 quickSort(arr, pi + 1, high, 0);
             }
-        }
-    }
-}
-
-bool read_data(std::vector<ll> &arr, std::string filename)
-{
-    std::ifstream inFile(filename, std::ios::binary | std::ios::in);
-
-    if (!inFile.is_open())
-    {
-        return false;
-    }
-
-    ll value;
-    while (inFile.read(reinterpret_cast<char *>(&value), sizeof(ll)))
-    {
-        arr.push_back(value);
-    }
-
-    inFile.close();
-
-    return true;
-}
-
-// If correct, print nothing. Otherwise, print error index and its value
-void validate(std::vector<ll> &arr)
-{
-    ll n = arr.size();
-    for (ll i = 0; i < n - 1; i++)
-    {
-        if (arr[i] > arr[i + 1])
-        {
-            std::cout << "error at " << i << " " << arr[i] << " " << arr[i + 1] << std::endl;
         }
     }
 }
