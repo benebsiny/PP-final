@@ -84,13 +84,13 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int &id)
         if (depth > 0)
         {
             int forkedId = (1 << (totalDepth - depth)) + id;
-            if (forkedId < threadCount)
+            if (forkedId < threadCount)  // Create a new thread
             {
                 thread left_thread(quickSort, ref(arr), low, pi - 1, depth - 1, ref(forkedId));
                 quickSort(arr, pi + 1, high, depth - 1, id); // Right part
                 left_thread.join();
             }
-            else
+            else  // It exceeds the number of specified thread count, don't create a new thread
             {
                 quickSort(arr, low, pi - 1, 0, id);
                 quickSort(arr, pi + 1, high, 0, id);

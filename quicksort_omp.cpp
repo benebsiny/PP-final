@@ -4,6 +4,7 @@
 #include <chrono>
 #include <fstream>
 #include <omp.h>
+#include <cmath>
 
 typedef long long ll;
 
@@ -13,6 +14,9 @@ typedef long long ll;
     (y) = (tmp);
 using namespace std;
 using namespace chrono;
+
+int threadCount = 8;
+int totalDepth = 3; // log2(8) = 3
 
 // Partition 函數
 ll partition(vector<ll> &arr, ll low, ll high)
@@ -37,7 +41,7 @@ ll partition(vector<ll> &arr, ll low, ll high)
 
 #define OMP 1
 
-void quickSort(vector<ll> &arr, ll low, ll high, int depth)
+void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int& id)
 {
     if (low < high)
     {
@@ -45,14 +49,23 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth)
 
         if (depth > 0)
         {
+            int forkedId = (1 << (totalDepth - depth)) + id;
+            if (forkedId < threadCount)  // Create a new thread
+            {
 #pragma omp task shared(arr)
-            quickSort(arr, low, pi - 1, depth - 1);  // Left part
-            quickSort(arr, pi + 1, high, depth - 1); // Right part
+                quickSort(arr, low, pi - 1, depth - 1, forkedId); // Left part
+                quickSort(arr, pi + 1, high, depth - 1, id);// Right part
+            }
+            else  // It exceeds the number of specified thread count, don't create a new thread
+            {
+                quickSort(arr, low, pi - 1, 0, id);
+                quickSort(arr, pi + 1, high, 0, id);
+            }
         }
         else
         {
-            quickSort(arr, low, pi - 1, 0);
-            quickSort(arr, pi + 1, high, 0);
+            quickSort(arr, low, pi - 1, 0, id);
+            quickSort(arr, pi + 1, high, 0, id);
         }
     }
 }
@@ -100,7 +113,13 @@ int main(int argc, char **argv)
     }
     cout << "Run for [" << rounds << "] rounds" << endl;
 
-    const int depth = 8; // 2  8 = 256 thread
+    threadCount = 8;
+    if (argc == 3)
+    {
+        threadCount = atoi(argv[2]);
+    }
+    totalDepth = (int)ceil(log2(threadCount));
+    cout << "Run for [" << threadCount << "] threads" << endl;
 
     vector<ll> arr;
     if (!read_data(arr))
@@ -118,8 +137,9 @@ int main(int argc, char **argv)
 
 #pragma omp parallel
         {
+            int rootId = 0;
 #pragma omp single
-            quickSort(temp, 0, n - 1, depth);
+            quickSort(temp, 0, n - 1, totalDepth, rootId);
         }
 
         auto end_time = high_resolution_clock::now();
