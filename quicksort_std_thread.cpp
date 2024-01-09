@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <fstream>
+#include <cmath>
 #define SWAP(x, y) \
     ll tmp = (x);  \
     (x) = (y);     \
@@ -11,6 +12,9 @@ using namespace std;
 using namespace chrono;
 
 typedef long long ll;
+
+int threadCount = 8;
+int totalDepth = 3; // log2(8) = 3
 
 // Partition 函數
 ll partition(vector<ll> &arr, ll low, ll high)
@@ -71,7 +75,7 @@ void quickSort(vector<ll>& arr, ll low, ll high, int depth) {
     }
 }*/
 
-void quickSort(vector<ll> &arr, ll low, ll high, int depth)
+void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int &id)
 {
     if (low < high)
     {
@@ -79,14 +83,23 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth)
 
         if (depth > 0)
         {
-            thread left_thread(quickSort, ref(arr), low, pi - 1, depth - 1);
-            quickSort(arr, pi + 1, high, depth - 1); // Right part
-            left_thread.join();
+            int forkedId = (1 << (totalDepth - depth)) + id;
+            if (forkedId < threadCount)
+            {
+                thread left_thread(quickSort, ref(arr), low, pi - 1, depth - 1, ref(forkedId));
+                quickSort(arr, pi + 1, high, depth - 1, id); // Right part
+                left_thread.join();
+            }
+            else
+            {
+                quickSort(arr, low, pi - 1, 0, id);
+                quickSort(arr, pi + 1, high, 0, id);
+            }
         }
         else
         {
-            quickSort(arr, low, pi - 1, 0);
-            quickSort(arr, pi + 1, high, 0);
+            quickSort(arr, low, pi - 1, 0, id);
+            quickSort(arr, pi + 1, high, 0, id);
         }
     }
 }
@@ -134,7 +147,13 @@ int main(int argc, char **argv)
     }
     cout << "Run for [" << rounds << "] rounds" << endl;
 
-    const int depth = 8; // 2 ** 8 = 256 thread
+    threadCount = 8;
+    if (argc == 3)
+    {
+        threadCount = atoi(argv[2]);
+    }
+    totalDepth = (int)ceil(log2(threadCount));
+    cout << "Run for [" << threadCount << "] threads" << endl;
 
     vector<ll> arr;
     if (!read_data(arr))
@@ -150,7 +169,8 @@ int main(int argc, char **argv)
         vector<ll> temp = vector<ll>(arr);
         auto start_time = high_resolution_clock::now();
 
-        quickSort(temp, 0, n - 1, depth);
+        int rootId = 0;
+        quickSort(temp, 0, n - 1, totalDepth, rootId);
 
         auto end_time = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(end_time - start_time);
