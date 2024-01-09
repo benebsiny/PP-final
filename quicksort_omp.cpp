@@ -15,9 +15,6 @@ typedef long long ll;
 using namespace std;
 using namespace chrono;
 
-int threadCount = 8;
-int totalDepth = 3; // log2(8) = 3
-
 // Partition 函數
 ll partition(vector<ll> &arr, ll low, ll high)
 {
@@ -41,7 +38,7 @@ ll partition(vector<ll> &arr, ll low, ll high)
 
 #define OMP 1
 
-void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int& id)
+void quickSort(vector<ll> &arr, ll low, ll high, int depth)
 {
     if (low < high)
     {
@@ -49,30 +46,21 @@ void quickSort(vector<ll> &arr, ll low, ll high, int depth, const int& id)
 
         if (depth > 0)
         {
-            int forkedId = (1 << (totalDepth - depth)) + id;
-            if (forkedId < threadCount)  // Create a new thread
-            {
 #pragma omp task shared(arr)
-                quickSort(arr, low, pi - 1, depth - 1, forkedId); // Left part
-                quickSort(arr, pi + 1, high, depth - 1, id);// Right part
-            }
-            else  // It exceeds the number of specified thread count, don't create a new thread
-            {
-                quickSort(arr, low, pi - 1, 0, id);
-                quickSort(arr, pi + 1, high, 0, id);
-            }
+            quickSort(arr, low, pi - 1, depth - 1);  // Left part
+            quickSort(arr, pi + 1, high, depth - 1); // Right part
         }
         else
         {
-            quickSort(arr, low, pi - 1, 0, id);
-            quickSort(arr, pi + 1, high, 0, id);
+            quickSort(arr, low, pi - 1, 0);
+            quickSort(arr, pi + 1, high, 0);
         }
     }
 }
 
-bool read_data(vector<ll> &arr)
+bool read_data(vector<ll> &arr, std::string filename)
 {
-    ifstream inFile("random_numbers.bin", ios::binary | ios::in);
+    ifstream inFile(filename, ios::binary | ios::in);
 
     if (!inFile.is_open())
     {
@@ -105,24 +93,25 @@ void validate(vector<ll> &arr)
 
 int main(int argc, char **argv)
 {
-    int rounds = 1;
-    double total_time = 0;
-    if (argc == 2)
+    if (argc < 2 || argc > 3)
     {
-        rounds = atoi(argv[1]);
+        cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
+        return 1;
     }
-    cout << "Run for [" << rounds << "] rounds" << endl;
 
-    threadCount = 8;
+    std::string filename = argv[1];
+
+    const int depth = 8; // 2 8 = 256 thread
+
     if (argc == 3)
     {
-        threadCount = atoi(argv[2]);
+        int threads = atoi(argv[2]);
+        omp_set_dynamic(0);
+        omp_set_num_threads(threads);
     }
-    totalDepth = (int)ceil(log2(threadCount));
-    cout << "Run for [" << threadCount << "] threads" << endl;
 
     vector<ll> arr;
-    if (!read_data(arr))
+    if (!read_data(arr, filename))
     {
         cerr << "Can't read data\n";
         return 1;
@@ -130,27 +119,19 @@ int main(int argc, char **argv)
     ll n = arr.size();
     cout << "Load count: " << n << endl;
 
-    for (int i = 0; i < rounds; i++)
-    {
-        vector<ll> temp = vector<ll>(arr);
-        auto start_time = high_resolution_clock::now();
+    auto start_time = high_resolution_clock::now();
 
 #pragma omp parallel
-        {
-            int rootId = 0;
+    {
 #pragma omp single
-            quickSort(temp, 0, n - 1, totalDepth, rootId);
-        }
-
-        auto end_time = high_resolution_clock::now();
-        auto duration = duration_cast<milliseconds>(end_time - start_time);
-        cout << "[Round " << i << "] Execution time: " << duration.count() << " ms" << endl;
-        total_time += duration.count();
-
-        validate(temp);
+        quickSort(arr, 0, n - 1, depth);
     }
 
-    cout << "Average time: " << total_time / rounds << " ms" << endl;
+    auto end_time = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end_time - start_time);
+    cout << "Execution time: " << duration.count() << " ms" << endl;
+
+    validate(arr);
 
     return 0;
 }

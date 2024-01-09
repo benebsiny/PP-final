@@ -47,9 +47,9 @@ void quickSort(vector<ll> &arr, ll low, ll high)
     }
 }
 
-bool read_data(vector<ll> &arr)
+bool read_data(vector<ll> &arr, std::string filename)
 {
-    ifstream inFile("random_numbers.bin", ios::binary | ios::in);
+    ifstream inFile(filename, ios::binary | ios::in);
 
     if (!inFile.is_open())
     {
@@ -82,16 +82,16 @@ void validate(vector<ll> &arr)
 
 int main(int argc, char **argv)
 {
-    int rounds = 1;
-    double total_time = 0;
-    if (argc == 2)
+    if (argc != 2)
     {
-        rounds = atoi(argv[1]);
+        cerr << "[*] Usage: " << argv[0] << " <input file>\n";
+        return 1;
     }
-    cout << "Run for [" << rounds << "] rounds" << endl;
+
+    std::string filename = argv[1];
 
     vector<ll> arr;
-    if (!read_data(arr))
+    if (!read_data(arr, filename))
     {
         cerr << "Can't read data\n";
         return 1;
@@ -99,22 +99,15 @@ int main(int argc, char **argv)
     ll n = arr.size();
     cout << "Load count:" << n << endl;
 
-    for (int i = 0; i < rounds; i++)
-    {
-        vector<ll> temp = vector<ll>(arr);
-        auto start_time = high_resolution_clock::now();
+    auto start_time = high_resolution_clock::now();
 
-        quickSort(temp, 0, n - 1);
+    quickSort(arr, 0, n - 1);
 
-        auto end_time = high_resolution_clock::now();
-        auto duration = duration_cast<milliseconds>(end_time - start_time);
-        cout << "[Round " << i << "] Execution time: " << duration.count() << " ms" << endl;
-        total_time += duration.count();
+    auto end_time = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end_time - start_time);
+    cout << "Execution time: " << duration.count() << " ms" << endl;
 
-        validate(temp);
-    }
-
-    cout << "Average time: " << total_time / rounds << " ms" << endl;
+    validate(arr);
 
     return 0;
 }

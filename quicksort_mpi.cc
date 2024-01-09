@@ -80,9 +80,9 @@ void merge(std::vector<ll> &arr, ll divided)
     arr = left;
 }
 
-bool read_data(std::vector<ll> &arr)
+bool read_data(std::vector<ll> &arr, std::string filename)
 {
-    std::ifstream inFile("random_numbers.bin", std::ios::binary | std::ios::in);
+    std::ifstream inFile(filename, std::ios::binary | std::ios::in);
 
     if (!inFile.is_open())
     {
@@ -117,6 +117,14 @@ int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
 
+    if (argc != 2)
+    {
+        std::cerr << "[*] Usage: " << argv[0] << " <input file>\n";
+        return 1;
+    }
+
+    std::string filename = argv[1];
+
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -127,13 +135,13 @@ int main(int argc, char **argv)
 
     if (rank == 0)
     {
-        if (!read_data(arr))
+        if (!read_data(arr, filename))
         {
             std::cerr << "Can't read data\n";
             return 1;
         }
         n = arr.size();
-        std::cout << "Load count:" << n << std::endl;
+        std::cout << "Load count: " << n << std::endl;
     }
 
     // Send the count of the array to other process
@@ -151,11 +159,12 @@ int main(int argc, char **argv)
     if (rank == 0)
     {
         merge(arr, size);
-        validate(arr);
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
+
+        validate(arr);
     }
 
     MPI_Finalize();
