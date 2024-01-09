@@ -5,7 +5,8 @@
 using namespace std;
 typedef long long ll;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     // 產生器和分佈
     random_device rd;
     mt19937 generator(rd());
@@ -13,21 +14,27 @@ int main(int argc, char* argv[]) {
 
     // 產生一千萬個隨機數字
     int totalNumbers = 10000000;
-    if (argc == 2) {
+    if (argc == 2)
+    {
         totalNumbers = stoll(argv[1]);
     }
 
-    ofstream outFile("random_numbers.bin", ios::binary | ios::out);
+    std::string filename = "random_numbers_" + std::to_string(totalNumbers) + ".bin";
+    ofstream outFile(filename, ios::binary | ios::out);
 
-    if (outFile.is_open()) {
-        for (int i = 0; i < totalNumbers; ++i) {
+    if (outFile.is_open())
+    {
+        for (int i = 0; i < totalNumbers; ++i)
+        {
             ll randomNumber = distribution(generator);
-            outFile.write(reinterpret_cast<const char*>(&randomNumber), sizeof(ll));
+            outFile.write(reinterpret_cast<const char *>(&randomNumber), sizeof(ll));
         }
 
         outFile.close();
-        cout << "成功產生" << totalNumbers << "個隨機數字並以二進制格式寫入檔案。\n";
-    } else {
+        cout << "Generated file: " + filename + "\n";
+    }
+    else
+    {
         cerr << "無法開啟檔案進行寫入。\n";
         return 1;
     }
