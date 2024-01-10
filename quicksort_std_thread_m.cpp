@@ -105,9 +105,14 @@ int main(int argc, char **argv)
     auto start_time = std::chrono::high_resolution_clock::now();
 
     int interval = n / threadCount;
+    std::thread threads[threadCount];
     for (int i = 0; i < threadCount; i++)
     {
-        quickSort(arr, i * interval, (i + 1) * interval - 1);
+        threads[i] = std::thread(quickSort, std::ref(arr), i * interval, (i + 1) * interval - 1);
+    }
+    for (int i = 0; i < threadCount; i++)
+    {
+        threads[i].join();
     }
 
     XDEv11_merge(arr, threadCount);
