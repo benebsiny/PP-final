@@ -2,8 +2,9 @@
 #include <mpi.h>
 #include <iostream>
 #include <vector>
-#include <utility>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include "commons/helper.hpp"
 
 int partition(std::vector<ll> &arr, ll low, ll high)
@@ -24,86 +25,40 @@ int partition(std::vector<ll> &arr, ll low, ll high)
     return i + 1;
 }
 
-void quickSort(std::vector<ll> &arr, ll low, ll high)
+int rank, size, totalDepth;
+int k = 0;
+
+void quickSort(std::vector<ll> &arr, ll low, ll high, int depth)
 {
     if (low < high)
     {
         ll pi = partition(arr, low, high);
 
-        quickSort(arr, low, pi - 1);
-        quickSort(arr, pi + 1, high);
-    }
-}
-
-void XDEv11_merge(std::vector<ll> &arr, ll divided)
-{
-	std::vector<ll> res{};
-
-	std::vector<std::pair<ll, int>> pq(divided);
-    ll interval = arr.size() / divided;
-    for (int i = 0; i < divided; ++i) {
-		std::pair<ll, int> x{arr[i * interval], i * interval};
-		int j{i - 1};
-		for (; j >= 0 && pq[j] > x; --j) pq[j + 1] = pq[j];
-		pq[j + 1] = x;
-	}
-
-	while (!pq.empty()) {
-		auto x = pq[0];
-		res.push_back(x.first);
-		int i = x.second + 1;
-		if (i % interval == 0) {
-			for (int j = 1; j < pq.size(); ++j) pq[j - 1] = pq[j];
-			pq.pop_back();
-		} else {
-			x = {arr[i], i};
-			int j{1};
-			for (; j < pq.size() && pq[j] < x; ++j) pq[j - 1] = pq[j];
-			pq[j - 1] = x;
-		}
-	}
-
-	arr = move(res);
-}
-
-void merge(std::vector<ll> &arr, ll divided)
-{
-
-    std::vector<ll> left;
-    ll interval = arr.size() / divided;
-
-    for (ll d = 0; d < divided; d++)
-    {
-
-        std::vector<ll> res(left.size() + interval);
-        ll residx = 0;
-
-        size_t i = 0;
-        ll j = interval * d;
-        while (i < left.size() && j < interval * (d + 1))
+        if (depth == 0)
         {
-            if (left[i] < arr[j])
-            {
-                res[residx++] = left[i++];
+            quickSort(arr, low, pi - 1, 0);
+            quickSort(arr, pi + 1, high, 0);
+        }
+        else
+        {
+            int target = (1 << (totalDepth - depth)) + rank; // Target rank
+
+            if (target < size)
+            { // The `size` may not be the power of 2 If it's not, the `target` might be larger than `size`
+
+                ll info[3] = {pi - low, depth - 1, rank};                                                     // count, depth, rank
+                MPI_Send(&info, 3, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD);                             // Send infomation to target rank
+                MPI_Send(&(*arr.begin()) + (int)low, pi - low, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD); // Send array to target rank
+                quickSort(arr, pi + 1, high, depth - 1);
+                MPI_Recv(&(*arr.begin()) + (int)low, pi - low, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // Get the calculated part from another rank
             }
             else
-            {
-                res[residx++] = arr[j++];
+            { // No need to `MPI_Send` when there's no more process to run
+                quickSort(arr, low, pi - 1, 0);
+                quickSort(arr, pi + 1, high, 0);
             }
         }
-        if (i != left.size())
-        {
-            for (; i < left.size(); i++)
-                res[residx++] = left[i];
-        }
-        if (j != interval * (d + 1))
-        {
-            for (; j < interval * (d + 1); j++)
-                res[residx++] = arr[j];
-        }
-        left = res;
     }
-    arr = left;
 }
 
 int main(int argc, char **argv)
@@ -118,12 +73,12 @@ int main(int argc, char **argv)
 
     std::string filename = argv[1];
 
-    int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    std::vector<ll> arr;
+    totalDepth = std::ceil(std::log2(size));
 
+    std::vector<ll> arr;
     ll n = 0;
 
     if (rank == 0)
@@ -137,22 +92,25 @@ int main(int argc, char **argv)
         std::cout << "Load count: " << n << std::endl;
     }
 
-    // Send the count of the array to other process
-    MPI_Bcast(&n, 1, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
-
-    ll localN = n / size;
-    std::vector<ll> localArr(localN);
-
     auto start_time = std::chrono::high_resolution_clock::now();
-
-    MPI_Scatter(arr.data(), localN, MPI_LONG_LONG_INT, localArr.data(), localN, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
-    quickSort(localArr, 0, localN - 1);
-    MPI_Gather(localArr.data(), localN, MPI_LONG_LONG_INT, arr.data(), localN, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
 
     if (rank == 0)
     {
-        XDEv11_merge(arr, size);
+        quickSort(arr, 0, n - 1, totalDepth);
+    }
+    else
+    {
+        ll info[3];                                                                                  // count, depth, fromRank
+        MPI_Recv(&info, 3, MPI_LONG_LONG_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // Get info
 
+        std::vector<ll> localArr((int)info[0]);
+        MPI_Recv(localArr.data(), info[0], MPI_LONG_LONG_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // Get data
+        quickSort(localArr, 0, info[0] - 1, info[1]);
+        MPI_Send(localArr.data(), info[0], MPI_LONG_LONG_INT, info[2], 0, MPI_COMM_WORLD); // Send data back
+    }
+
+    if (rank == 0)
+    {
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
