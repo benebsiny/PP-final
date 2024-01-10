@@ -7,6 +7,9 @@
 #include <cmath>
 #include "commons/helper.hpp"
 
+ll n = 0;
+int threshold = 8;
+
 int partition(std::vector<ll> &arr, ll low, ll high)
 {
     ll pivot = arr[high];
@@ -61,17 +64,71 @@ void quickSort(std::vector<ll> &arr, ll low, ll high, int depth)
     }
 }
 
+// Load balance
+void quickSort2(std::vector<ll> &arr, ll low, ll high, int depth)
+{
+    if (low < high)
+    {
+        ll pi = partition(arr, low, high);
+
+        if (depth == 0)
+        {
+            quickSort2(arr, low, pi - 1, 0);
+            quickSort2(arr, pi + 1, high, 0);
+        }
+        else
+        {
+            int target = (1 << (totalDepth - depth)) + rank; // Target rank
+
+            if (target < size)
+            { // The `size` may not be the power of 2 If it's not, the `target` might be larger than `size`
+
+                if (pi - low <= n / threshold)
+                {
+                    quickSort2(arr, low, pi - 1, 0);      // Left part
+                    quickSort2(arr, pi + 1, high, depth); // Right part
+                }
+                else if (high - pi <= n / threshold)
+                {
+                    quickSort2(arr, pi + 1, high, 0);    // Right part
+                    quickSort2(arr, low, pi - 1, depth); // Left part
+                }
+                else
+                {
+                    ll info[3] = {pi - low, depth - 1, rank};                                                     // count, depth, rank
+                    MPI_Send(&info, 3, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD);                             // Send infomation to target rank
+                    MPI_Send(&(*arr.begin()) + (int)low, pi - low, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD); // Send array to target rank
+                    quickSort2(arr, pi + 1, high, depth - 1);
+                    MPI_Recv(&(*arr.begin()) + (int)low, pi - low, MPI_LONG_LONG_INT, target, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // Get the calculated part from another rank
+                }
+            }
+            else
+            { // No need to `MPI_Send` when there's no more process to run
+                quickSort2(arr, low, pi - 1, 0);
+                quickSort2(arr, pi + 1, high, 0);
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
 
-    if (argc != 2)
+    if (argc < 2 || argc > 3)
     {
-        std::cerr << "[*] Usage: " << argv[0] << " <input file>\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [threshold]\\n";
         return 1;
     }
 
     std::string filename = argv[1];
+
+    bool loadBalance = false;
+    if (argc >= 3)
+    {
+        threshold = atoi(argv[2]);
+        loadBalance = true;
+    }
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -79,7 +136,6 @@ int main(int argc, char **argv)
     totalDepth = std::ceil(std::log2(size));
 
     std::vector<ll> arr;
-    ll n = 0;
 
     if (rank == 0)
     {
@@ -96,7 +152,14 @@ int main(int argc, char **argv)
 
     if (rank == 0)
     {
-        quickSort(arr, 0, n - 1, totalDepth);
+        if (loadBalance)
+        {
+            quickSort2(arr, 0, n - 1, totalDepth);
+        }
+        else
+        {
+            quickSort(arr, 0, n - 1, totalDepth);
+        }
     }
     else
     {
@@ -105,7 +168,14 @@ int main(int argc, char **argv)
 
         std::vector<ll> localArr((int)info[0]);
         MPI_Recv(localArr.data(), info[0], MPI_LONG_LONG_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // Get data
-        quickSort(localArr, 0, info[0] - 1, info[1]);
+        if (loadBalance)
+        {
+            quickSort2(localArr, 0, info[0] - 1, info[1]);
+        }
+        else
+        {
+            quickSort(localArr, 0, info[0] - 1, info[1]);
+        }
         MPI_Send(localArr.data(), info[0], MPI_LONG_LONG_INT, info[2], 0, MPI_COMM_WORLD); // Send data back
     }
 

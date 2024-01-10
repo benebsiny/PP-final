@@ -7,6 +7,9 @@
 #include <cmath>
 #include "commons/helper.hpp"
 
+ll n;
+int threshold = 5;
+
 // Partition 函數
 ll partition(std::vector<ll> &arr, ll low, ll high)
 {
@@ -50,11 +53,45 @@ void quickSort(std::vector<ll> &arr, ll low, ll high, int depth)
     }
 }
 
+// Load balance
+void quickSort2(std::vector<ll> &arr, ll low, ll high, int depth)
+{
+    if (low < high)
+    {
+        ll pi = partition(arr, low, high); // 選擇 pivot 並找到 partition 的位置
+
+        if (depth > 0)
+        {
+            if (pi - low <= n / threshold)
+            {
+                quickSort2(arr, low, pi - 1, 0);      // Left part
+                quickSort2(arr, pi + 1, high, depth); // Right part
+            }
+            else if (high - pi <= n / threshold)
+            {
+                quickSort2(arr, pi + 1, high, 0);    // Right part
+                quickSort2(arr, low, pi - 1, depth); // Left part
+            }
+            else
+            {
+#pragma omp task shared(arr)
+                quickSort2(arr, pi + 1, high, depth - 1); // Right part
+                quickSort2(arr, low, pi - 1, depth - 1);  // Left part
+            }
+        }
+        else
+        {
+            quickSort2(arr, low, pi - 1, 0);
+            quickSort2(arr, pi + 1, high, 0);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc < 2 || argc > 3)
+    if (argc < 2 || argc > 4)
     {
-        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads]\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads] [threshold]\n";
         return 1;
     }
 
@@ -62,12 +99,20 @@ int main(int argc, char **argv)
 
     const int depth = 8; // 2 8 = 256 thread
 
-    if (argc == 3)
+    if (argc >= 3)
     {
         int threads = atoi(argv[2]);
         omp_set_dynamic(0);
         omp_set_num_threads(threads);
     }
+
+    bool loadBalance = false;
+    if (argc >= 4)
+    {
+        threshold = atoi(argv[3]);
+        loadBalance = true;
+    }
+    std::cout << "Run " << ((loadBalance) ? "with" : "without") << " load balance.\n";
 
     std::vector<ll> arr;
     if (!read_data(arr, filename))
@@ -75,15 +120,26 @@ int main(int argc, char **argv)
         std::cerr << "Can't read data\n";
         return 1;
     }
-    ll n = arr.size();
+    n = arr.size();
     std::cout << "Load count: " << n << std::endl;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel
+    if (loadBalance)
     {
+#pragma omp parallel
+        {
 #pragma omp single
-        quickSort(arr, 0, n - 1, depth);
+            quickSort2(arr, 0, n - 1, depth);
+        }
+    }
+    else
+    {
+#pragma omp parallel
+        {
+#pragma omp single
+            quickSort(arr, 0, n - 1, depth);
+        }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();

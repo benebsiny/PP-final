@@ -9,6 +9,7 @@
 int threadCount = 8;
 int totalDepth = 3; // log2(8) = 3
 ll n = 0;
+int threshold = 5;
 
 // Partition 函數
 ll partition(std::vector<ll> &arr, ll low, ll high)
@@ -69,20 +70,15 @@ void quickSort2(std::vector<ll> &arr, ll low, ll high, int depth)
 
         if (depth > 0)
         {
-            if (pi - low <= n / 5)
+            if (pi - low <= n / threshold)
             {
-                // std::thread left_thread(quickSort2, ref(arr), low, pi - 1, 0); // Left part
-                quickSort2(arr, low, pi-1, 0);
-                quickSort2(arr, pi + 1, high, depth);                          // Right part
-                // left_thread.join();
+                quickSort2(arr, low, pi - 1, 0);      // Left part
+                quickSort2(arr, pi + 1, high, depth); // Right part
             }
-            else if (high - pi <= n / 5)
+            else if (high - pi <= n / threshold)
             {
-                // std::thread right_thread(quickSort2, ref(arr), pi + 1, high, 0); // Right part
-                quickSort2(arr, pi + 1, high, 0);
-                
-                quickSort2(arr, low, pi - 1, depth);                             // Left part
-                // right_thread.join();
+                quickSort2(arr, pi + 1, high, 0);    // Right part
+                quickSort2(arr, low, pi - 1, depth); // Left part
             }
             else
             {
@@ -103,14 +99,14 @@ int main(int argc, char **argv)
 {
     if (argc < 2 || argc > 4)
     {
-        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads] -b\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [number of threads] [threshold]\n";
         return 1;
     }
 
     std::string filename = argv[1];
 
     threadCount = 8;
-    if (argc == 3)
+    if (argc >= 3)
     {
         threadCount = atoi(argv[2]);
     }
@@ -118,11 +114,12 @@ int main(int argc, char **argv)
     std::cout << "Run for [" << threadCount << "] threads" << std::endl;
 
     bool loadBalance = false;
-    if (argc == 4 && !strcmp(argv[3], "-b"))
+    if (argc >= 4)
     {
+        threshold = atoi(argv[3]);
         loadBalance = true;
     }
-    std::cout << "Run " << ((loadBalance) ? "with" : "without") << " load balance\n";
+    std::cout << "Run " << ((loadBalance) ? "with" : "without") << " load balance.\n";
 
     std::vector<ll> arr;
     if (!read_data(arr, filename))
