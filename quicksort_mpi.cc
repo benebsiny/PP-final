@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <iostream>
 #include <vector>
+#include <utility>
 #include <chrono>
 #include "commons/helper.hpp"
 
@@ -32,6 +33,37 @@ void quickSort(std::vector<ll> &arr, ll low, ll high)
         quickSort(arr, low, pi - 1);
         quickSort(arr, pi + 1, high);
     }
+}
+
+void XDEv11_merge(std::vector<ll> &arr, ll divided)
+{
+	std::vector<ll> res{};
+
+	std::vector<std::pair<ll, int>> pq(divided);
+    ll interval = arr.size() / divided;
+    for (int i = 0; i < divided; ++i) {
+		std::pair<ll, int> x{arr[i * interval], i * interval};
+		int j{i - 1};
+		for (; j >= 0 && pq[j] > x; --j) pq[j + 1] = pq[j];
+		pq[j + 1] = x;
+	}
+
+	while (!pq.empty()) {
+		auto x = pq[0];
+		res.push_back(x.first);
+		int i = x.second + 1;
+		if (i % interval == 0) {
+			for (int j = 1; j < pq.size(); ++j) pq[j - 1] = pq[j];
+			pq.pop_back();
+		} else {
+			x = {arr[i], i};
+			int j{1};
+			for (; j < pq.size() && pq[j] < x; ++j) pq[j - 1] = pq[j];
+			pq[j - 1] = x;
+		}
+	}
+
+	arr = move(res);
 }
 
 void merge(std::vector<ll> &arr, ll divided)
@@ -119,7 +151,7 @@ int main(int argc, char **argv)
 
     if (rank == 0)
     {
-        merge(arr, size);
+        XDEv11_merge(arr, size);
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
