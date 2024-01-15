@@ -102,8 +102,10 @@ int main(int argc, char **argv)
     if (argc >= 3)
     {
         int threads = atoi(argv[2]);
-        omp_set_dynamic(0);
-        omp_set_num_threads(threads);
+        if (threads != 0) {
+            omp_set_dynamic(0);
+            omp_set_num_threads(threads);
+        }
     }
 
     bool loadBalance = false;
