@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 
     if (argc < 2 || argc > 3)
     {
-        std::cerr << "[*] Usage: " << argv[0] << " <input file> [threshold]\\n";
+        std::cerr << "[*] Usage: " << argv[0] << " <input file> [threshold]\n";
         return 1;
     }
 
@@ -129,6 +129,7 @@ int main(int argc, char **argv)
         threshold = atoi(argv[2]);
         loadBalance = true;
     }
+    std::cout << "Run " << ((loadBalance) ? "with" : "without") << " load balance.\n";
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
