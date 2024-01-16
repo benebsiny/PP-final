@@ -61,7 +61,7 @@ To generate test data, use the following command:
     * If not specified, the algorithm may result in workload imbalances between threads or processes. The decision to create new threads or processes will depend on the default behavior of the parallelization method used.
 
 ## Reproduce
-There is a file `reproduce.sh` to reproduce all the commads above. Remember to create a file `hosts` containing the host names for MPI before executing it.
+There is a file `reproduce.sh` to reproduce the results in the report. Remember to create a file `hosts` containing the host names for MPI before executing it.
 ```bash
 ./reproduce.sh
 ```
